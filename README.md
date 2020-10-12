@@ -7,7 +7,7 @@ subject to errors. The work is motivated by applications that contain computatio
 arithmetic, or are subject to statistical noise. We only assume that the noise is additive and bounded. 
 The optimizer is provided potentially noisy evaluations of the function and gradient, and seeks to find an approximate minimizer. 
 The curvature information is stabilized through a lengthening procedure that spaces out the points at which gradient differences 
-are computed. The implementation is written in Python 3. Please see our paper at <https://arxiv.org/abs/xxxx.xxxxx> for more details on our work.
+are computed. The implementation is written in Python 3. Please see our paper at <https://arxiv.org/abs/2010.04352> for more details on our work.
 
 ## Usage
 To use our code, import `ntqn.py` and call the function. 
@@ -91,16 +91,27 @@ def func(x):
 def grad(x):
     return scipy.optimize.rosen_der(x) + np.random.uniform(-1e-3, 1e-3, size=x0.shape)
 
-x_opt, f_opt, iters, f_evals, g_evals, flag, results = ntqn.bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=1e-3)
+x_opt, f_opt, iters, f_evals, g_evals, flag, results = ntqn.bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=np.sqrt(n) * 1e-3)
 ```
 
 ## Citation
 
-If you use this code or our results in your research, please cite:
+If you use this code or our results in your research, please cite our two works:
 
-	@article{Shi2020,
-		author = {Hao-Jun Michael Shi, Yuchen Xie, Richard Byrd, and Jorge Nocedal},
-		title = {A Noise-Tolerant Quasi-Newton Algorithm for Unconstrained Optimization},
-		journal = {arXiv:xxxx.xxxxx},
-		year = {2020}
-	}
+    @article{shi2020noise,
+      title={A Noise-Tolerant Quasi-Newton Method for Unconstrained Optimization},
+      author={Shi, Hao-Jun Michael and Xie, Yuchen and Byrd, Richard H and Nocedal, Jorge},
+      journal={arXiv preprint arXiv:2010.04352},
+      year={2020}
+    }
+    	
+    @article{xie2020analysis,
+      title={Analysis of the BFGS Method with Errors},
+      author={Xie, Yuchen and Byrd, Richard H and Nocedal, Jorge},
+      journal={SIAM Journal on Optimization},
+      volume={30},
+      number={1},
+      pages={182--209},
+      year={2020},
+      publisher={SIAM}
+    }

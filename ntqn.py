@@ -5,9 +5,8 @@ def bfgs_e(func, grad, x0, eps_f=0., eps_g=0., callback=None, options=None):
     """BFGS-E: Noise-Tolerant BFGS/BFGS with Errors
 
     A noise-tolerant (L-)BFGS algorithm that minimizes an objective function with error in its function and gradient
-    evaluations. Requires knowledge of the noise level in both the function and gradient. If the gradient is not
-    available, the algorithm will revert to finite-differencing and infer the gradient noise level based on the
-    function noise level. Method defaults to using limited memory.
+    evaluations. Requires knowledge of the noise level in both the function and gradient. Method defaults to using
+    limited memory.
 
     Parameters
     ----------
@@ -132,7 +131,6 @@ def bfgs_e(func, grad, x0, eps_f=0., eps_g=0., callback=None, options=None):
       gradient, which generalizes the work done in [1].
     . Can also handle changing levels of noise or iterate-dependent noise levels by passing callable noise level
       functions.
-    . Finite-differencing requires estimate of the bound on the second derivative.
 
     Examples
     --------
@@ -148,12 +146,6 @@ def bfgs_e(func, grad, x0, eps_f=0., eps_g=0., callback=None, options=None):
     .. [2] Yuchen Xie, Richard Byrd, and Jorge Nocedal.
        "Analysis of the BFGS Method with Errors."
        SIAM Journal on Optimization 30.1 (2020): 182-209.
-    .. [3] Albert Berahas, Richard Byrd, and Jorge Nocedal.
-       "Derivative-Free Optimization of Noisy Functions via Quasi-Newton Methods."
-       SIAM Journal on Optimization 29.2 (2019): 965-993.
-    .. [4] Jorge More' and Stefan Wild.
-       "Estimating Derivatives of Noisy Simulations."
-       ACM Transactions on Mathematical Software (TOMS) 38.3 (2012): 1-21.
 
     Authors
     -------
@@ -622,7 +614,7 @@ def _line_search_nt_wolfe(func, grad, x_k, p_k, eps_f=0., eps_g=0., f_k=None, g_
     lower_bracket = 0
 
     # compute f_k and g_k if necessary
-    if not f_k:
+    if f_k is None:
         f_k = func(x_k)
         func_evals += 1
 
@@ -861,7 +853,7 @@ def _line_search_nt_wolfe(func, grad, x_k, p_k, eps_f=0., eps_g=0., f_k=None, g_
             armijo_flag = True
         else:
             alpha, f_new, eps_fp, fevals_back, armijo_flag = \
-                _backtracking(func, x_k, p_k, alpha=alpha, eps_f=eps_f, eps_g=eps_g, f_k=f_k, g_k=g_k, eps_fk=eps_fk,
+                _backtracking(func, x_k, p_k, g_k, alpha=alpha, eps_f=eps_f, eps_g=eps_g, f_k=f_k, eps_fk=eps_fk,
                               eps_fp=eps_fp, eps_gk=eps_gk, gtp=gtp, f_new=f_new, etp=etp, norm_pk=norm_pk, c1=c1,
                               max_ls_iter=max_ls_iter, verbose=verbose)
             func_evals += fevals_back
@@ -912,7 +904,7 @@ def _line_search_nt_wolfe(func, grad, x_k, p_k, eps_f=0., eps_g=0., f_k=None, g_
     return alpha, beta, mu, f_new, g_new, eps_fp, eps_gp, func_evals, grad_evals, armijo_flag, wolfe_flag, split_flag
 
 
-def _backtracking(func, x_k, p_k, alpha=1., eps_f=0., eps_g=0., f_k=None, g_k=None, eps_fk=None, eps_fp=None,
+def _backtracking(func, x_k, p_k, g_k, alpha=1., eps_f=0., eps_g=0., f_k=None, eps_fk=None, eps_fp=None,
                   eps_gk=None, gtp=None, f_new=None, etp=None, norm_pk=None, c1=1e-4, max_ls_iter=20, verbose=False):
     """Backtracking Line Search
 
@@ -931,6 +923,8 @@ def _backtracking(func, x_k, p_k, alpha=1., eps_f=0., eps_g=0., f_k=None, g_k=No
         Current iterate with shape (n,).
     p_k : ndarray
         Search direction with shape (n,).
+    g_k : ndarray
+        (Noisy) gradient `grad` at current iterate x_k with shape (n,).
     alpha : float
         Initial steplength. (Default: 1)
     eps_f : {float, callable}, optional
@@ -941,8 +935,6 @@ def _backtracking(func, x_k, p_k, alpha=1., eps_f=0., eps_g=0., f_k=None, g_k=No
         noise with respect to each component.
     f_k : float, optional
         (Noisy) objective value `func` at current iterate x_k. If None, will evaluate with `func(x_k)`.
-    g_k : ndarray, optional
-        (Noisy) gradient `grad` at current iterate x_k. If None, will evaluate with `grad(x_k)`.
     eps_fk : float, optional
         Noise level of function at x_k. If None, will evaluate with `eps_f(x_k)`. (Default: None)
     eps_fp : float, optional
@@ -1004,6 +996,9 @@ def _backtracking(func, x_k, p_k, alpha=1., eps_f=0., eps_g=0., f_k=None, g_k=No
     # initialize directional derivatives and function value (if necessary)
     if gtp is None:
         gtp = np.dot(g_k, p_k)
+    if f_k is None:
+        f_k = func(x_k)
+        func_evals += 1
     if f_new is None:
         f_new = func(x_k + alpha * p_k)
         func_evals += 1
@@ -1189,6 +1184,9 @@ def _lengthening(grad, x_k, p_k, beta=1., eps_g=0., g_k=None, eps_gk=None, eps_g
     wolfe_flag = False
 
     # initialize gradient and directional derivatives (if necessary)
+    if g_k is None:
+        g_k = grad(x_k)
+        grad_evals += 1
     if gtp is None:
         gtp = np.dot(g_k, p_k)
     if g_new is None:
@@ -1292,7 +1290,7 @@ if __name__ == '__main__':
     def grad(x):
         return scipy.optimize.rosen_der(x) + np.random.uniform(-1e-5, 1e-5, size=x0.shape)
     options = {'qn_hist_size': np.inf}
-    x_opt, f_opt, iters, f_evals, g_evals, flag, results = bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=1e-5, options=options)
+    x_opt, f_opt, iters, f_evals, g_evals, flag, results = bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=np.sqrt(2) * 1e-5, options=options)
 
     print('Test on Rosenbrock Function with noise with L-BFGS (t = 10)')
     def func(x):
@@ -1300,4 +1298,4 @@ if __name__ == '__main__':
     def grad(x):
         return scipy.optimize.rosen_der(x) + np.random.uniform(-1e-5, 1e-5, size=x0.shape)
     options = {'qn_hist_size': 10}
-    x_opt, f_opt, iters, f_evals, g_evals, flag, results = bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=1e-5, options=options)
+    x_opt, f_opt, iters, f_evals, g_evals, flag, results = bfgs_e(func, grad, x0, eps_f=1e-5, eps_g=np.sqrt(2) * 1e-5, options=options)
