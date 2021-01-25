@@ -220,7 +220,7 @@ def bfgs_e(func, grad, x0, eps_f=0., eps_g=0., callback=None, options=None):
             H = np.identity(n)
 
     # assumes gradient is not noisy if passed without specifying eps_g or eps_f = 0
-    if (not eps_g and callable(grad)) or eps_f == 0.:
+    if (not np.any(eps_g) and callable(grad)) or eps_f == 0.:
         eps_g = 0.
 
     # track average function over window
